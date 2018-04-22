@@ -4,7 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class LoggedException extends Exception {
-
+	
 	/**
 	 * 
 	 */
@@ -30,5 +30,9 @@ public class LoggedException extends Exception {
 		Logger logger = stackTraces.length > 0 ? LogManager.getLogger(stackTraces[0].getClassName()) 
 				                                   : LogManager.getLogger(this.getClass());
 		logger.error(this.getLocalizedMessage());
+	}
+	
+	public RuntimeException toRuntimeException() {
+		return new RuntimeException(this);
 	}
 }

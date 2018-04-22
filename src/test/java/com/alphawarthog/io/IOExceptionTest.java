@@ -1,4 +1,4 @@
-package com.alphawarthog.exception;
+package com.alphawarthog.io;
 
 import java.io.File;
 import java.io.FileNotFoundException;
