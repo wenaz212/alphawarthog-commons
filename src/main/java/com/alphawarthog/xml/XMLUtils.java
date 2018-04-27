@@ -5,9 +5,8 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -34,136 +33,94 @@ import org.xml.sax.SAXException;
 
 public class XMLUtils {
 	
-	private static class XPathExp {
-		private XPathExpression exp;
-		private Object lock = new Object();
+	private static class XPathProcessor {
+		
+		private XPath xpath = XPathFactory.newInstance().newXPath();
+		private Map<String, XPathExpression> expressionMap = new HashMap<String, XPathExpression>();
+		
+		private String evaluateXPath(String expression, Node node) throws XMLException {
+		  XPathExpression exp = expressionMap.get(expression);
+		  if (exp == null) {
+	  		try {
+	  			exp = xpath.compile(expression);
+	  		} catch (XPathExpressionException e) {
+					throw new XMLException(XMLException.CANNOT_COMPILE_XPATH, expression, e.getMessage());
+				}
+		  	
+		  	logger.debug("XPath expression {0} compiled successfully", expression);
+		  	expressionMap.put(expression, exp);
+		  }
+			
+			String result;
+			try {
+				result = exp.evaluate(node);
+			} catch (XPathExpressionException e) {
+				throw new XMLException(XMLException.CANNOT_EVALUATE_XPATH, expression, node.getNodeName(), e.getMessage());
+			}
+			
+			logger.debug("XPath expression {0} evaluated to {1} against node {2}", expression, result, node.getNodeName());
+			return result;
+		}
 	}
 	
 	private static final Logger logger = LogManager.getLogger(XMLUtils.class);
 	
-	private static final ConcurrentMap<String, XPathExp> xpathExpressionMap = new ConcurrentHashMap<String, XPathExp>();
+	private static final ThreadLocal<XPathProcessor> xpathProcessor = new ThreadLocal<XPathProcessor>() {
+		
+		protected XPathProcessor initialValue() {
+			return new XPathProcessor();
+		}
+	};
 	
-	private static final AtomicReference<DocumentBuilder> docBuilderRef = new AtomicReference<DocumentBuilder>();
-	private static final Object docBuilderLock = new Object();
-	
-	private static final AtomicReference<XPath> xpathRef = new AtomicReference<XPath>();
-	private static final Object xpathLock = new Object();
-	
-	private static final AtomicReference<Transformer> transformerRef = new AtomicReference<Transformer>();
-	private static final Object transformerLock = new Object();
-	
-	private static Transformer getTransformer() throws XMLException {
-		Transformer transformer = transformerRef.get();
-		if (transformer == null) {
+	private static final ThreadLocal<Transformer> transformer = new ThreadLocal<Transformer>() {
+
+		protected Transformer initialValue() {
 			try {
-				transformer = TransformerFactory.newInstance().newTransformer();
+				logger.debug("Creating new transformer");
+				return TransformerFactory.newInstance().newTransformer();
 			} catch (TransformerConfigurationException | TransformerFactoryConfigurationError e) {
-				throw new XMLException(XMLException.CANNOT_CREATE_TRANSFORMER, e.getMessage());
+				throw new RuntimeException(new XMLException(XMLException.CANNOT_CREATE_TRANSFORMER, e.getMessage()));
 			}
-			
-			transformerRef.set(transformer);
-			logger.debug("XML Transformer created");
 		}
-		
-		return transformer;
-	}
-	 
-	private static XPath getXPath() {
-		XPath xpath = xpathRef.get();
-		if (xpath == null) {
-			xpath = XPathFactory.newInstance().newXPath();
-			xpathRef.set(xpath);
-			logger.debug("XPath instance created");
-		}
-		
-		return xpath;
-	}
+	};
 	
-	private static DocumentBuilder getDocumentBuilder() throws XMLException {
-		DocumentBuilder docBuilder = docBuilderRef.get();
-		if (docBuilder == null) {
+	private static ThreadLocal<DocumentBuilder> documentBuilder = new ThreadLocal<DocumentBuilder>() {
+		
+		protected DocumentBuilder initialValue() {
 			try {
-				docBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+				logger.debug("Creating new document builder");
+				return DocumentBuilderFactory.newInstance().newDocumentBuilder();
 			} catch (ParserConfigurationException e) {
-				throw new XMLException(XMLException.CANNOT_CREATE_DOC_BUILDER, e.getMessage());
+				throw new RuntimeException(new XMLException(XMLException.CANNOT_CREATE_DOC_BUILDER, e.getMessage()));
 			}
-			
-			docBuilderRef.set(docBuilder);
-			logger.debug("Document builder created");
 		}
-		
-		return docBuilder;
-	}
+	};
 	
-	public static Document newDocument() throws XMLException {
-		Document doc;
-		DocumentBuilder docBuilder = getDocumentBuilder();
-		synchronized(docBuilderLock) {
-			doc = docBuilder.newDocument();
-		}
-		
-		logger.debug("New document created");
-		return doc;
+	public static Document newDocument() {
+		logger.debug("Creating new document");
+		return documentBuilder.get().newDocument();
 	}
 	
 	public static Document parseDocument(String xml) throws XMLException {
-		Document doc;
-		
-		DocumentBuilder docBuilder = getDocumentBuilder();
 		try {
-			synchronized(docBuilderLock) {
-				doc = docBuilder.parse(new ByteArrayInputStream(xml.getBytes()));
-			}
+			logger.debug("Parsing " + xml);
+			return documentBuilder.get().parse(new ByteArrayInputStream(xml.getBytes()));
 		} catch (SAXException | IOException e) {
 			throw new XMLException(XMLException.CANNOT_PARSE_XML_STRING, xml, e.getMessage());
 		} 
-		
-		return doc;
 	}
 	
 	public static Document parseDocument(File file) throws XMLException {
-		Document doc;
-		
-		DocumentBuilder docBuilder = getDocumentBuilder();
 		try {
-			synchronized(docBuilderLock) {
-				doc = docBuilder.parse(file);
-			}
+			logger.debug("Parsing " + file.getPath());
+			return documentBuilder.get().parse(file);
 		} catch (SAXException | IOException e) {
 			throw new XMLException(XMLException.CANNOT_PARSE_XML_FILE, file.getPath(), e.getMessage());
 		}
-		
-		return doc;
 	}
 	
 	public static String evaluateXPath(String expression, Node node) throws XMLException {
-		XPathExp exp;
-		if ((exp = xpathExpressionMap.get(expression)) == null) {
-			exp = new XPathExp();
-			XPath xpath = getXPath();
-			try {
-				synchronized(xpathLock) {
-					exp.exp = xpath.compile(expression);
-				}
-			} catch (XPathExpressionException e) {
-				throw new XMLException(XMLException.CANNOT_COMPILE_XPATH, expression, e.getMessage());
-			}
-			
-			logger.debug("XPath expression {0} compiled successfully", expression);
-			xpathExpressionMap.putIfAbsent(expression, exp);
-		}
-		
-		String result;
-		try {
-			synchronized(exp.lock) {
-				result = exp.exp.evaluate(node);
-			}
-		} catch (XPathExpressionException e) {
-			throw new XMLException(XMLException.CANNOT_EVALUATE_XPATH, expression, node.getNodeName(), e.getMessage());
-		}
-		
-		logger.debug("XPath expression {0} evaluated to {1} against node {2}", expression, result, node.getNodeName());
-		return result;
+		return xpathProcessor.get().evaluateXPath(expression, node);
 	}
 	
 	public static void saveToFile(Document doc, File targetFile) throws XMLException, com.alphawarthog.io.IOException {
@@ -175,15 +132,11 @@ public class XMLUtils {
 			throw new com.alphawarthog.io.IOException(com.alphawarthog.io.IOException.CANNOT_OPEN_FILE, targetFile.getPath(), e.getMessage());
 		}
 		
-		Transformer transformer = getTransformer();
 		try {
-			synchronized(transformerLock) {
-				transformer.transform(domSource, fileResult);
-			}
+			transformer.get().transform(domSource, fileResult);
+			logger.debug("Document {0} saved to file {1} successfully", doc.getNodeName(), targetFile.getPath());
 		} catch (TransformerException e) {
 			throw new XMLException(XMLException.CANNOT_SAVE_DOCUMENT_TO_FILE, doc.getNodeName(), targetFile.getPath(), e.getMessage());
 		}
-		
-		logger.debug("Document {0} saved to file {1} successfully", doc.getNodeName(), targetFile.getPath());
 	}
 }

@@ -17,22 +17,24 @@ public class VelocityUtils {
 	
 	private static final Logger logger = LogManager.getLogger(VelocityUtils.class);
 	
-	private static final VelocityEngine ve = new VelocityEngine();
-	private static final Object veLock = new Object();
+	private static final ThreadLocal<VelocityEngine> ve = new ThreadLocal<VelocityEngine>() {
 		
-	static {
-		ve.init();
-	}
-	
+		protected VelocityEngine initialValue() {
+			VelocityEngine engine = new VelocityEngine();
+			engine.init();
+			
+			logger.debug("Velocity engine created and initialized");
+			return engine;
+		}
+	};
+		
 	public static String evaluate(String template, Context ctx) {
 		return evaluate(template, ctx, "");
 	}
 	
 	public static String evaluate(String template, Context ctx, String templateName) {
 		StringWriter writer = new StringWriter();
-		synchronized(veLock) {
-			ve.evaluate(ctx, writer, templateName, template);
-		}
+		ve.get().evaluate(ctx, writer, templateName, template);
 		
 		String result = writer.toString();
 		logger.debug("{0} evaluated to {1}", template, result);
@@ -45,9 +47,7 @@ public class VelocityUtils {
 			
 			boolean closingReader = false;
 			try (FileReader in = new FileReader(templateFile)) {
-				synchronized(veLock) {
-					ve.evaluate(ctx, out, templateFile.getPath(), in);
-				}
+				ve.get().evaluate(ctx, out, templateFile.getPath(), in);
 				
 				logger.debug("{0} evaluated into {1}", templateFile.getPath(), outputFile.getPath());
 				closingReader = true;

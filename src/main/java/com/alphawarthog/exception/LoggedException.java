@@ -29,7 +29,15 @@ public class LoggedException extends Exception {
 		StackTraceElement[] stackTraces = this.getStackTrace();
 		Logger logger = stackTraces.length > 0 ? LogManager.getLogger(stackTraces[0].getClassName()) 
 				                                   : LogManager.getLogger(this.getClass());
-		logger.error(this.getLocalizedMessage());
+		StringBuilder msg = new StringBuilder(this.getLocalizedMessage());
+		
+		if (this.getCause() instanceof RuntimeException) {
+			for (StackTraceElement el : this.getCause().getStackTrace()) {
+				msg.append(System.lineSeparator() + "  " + el);
+			}
+		}
+		
+		logger.error(msg);
 	}
 	
 	public RuntimeException toRuntimeException() {
