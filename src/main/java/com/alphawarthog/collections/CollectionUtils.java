@@ -12,23 +12,22 @@ public class CollectionUtils {
 	 * ABC, ABD, ACB, ACD, ADB, ADC, BAC, BAD, BCA, BCD, BDA, BDC, 
 	 * CAB, CAD, CBA, CBD, CDA, CDB, DAB, DAC, DBA, DBC, DCA, DCB
   */
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public static List<List> permutation(List elements, int n) {
-		List<List> result = new ArrayList<List>();
+	public static <E> List<List<E>> permutation(List<E> elements, int n) {
+		List<List<E>> result = new ArrayList<List<E>>();
 		
 		if (n == 1) {
-			for (Object obj : elements) {
-				List list = new ArrayList();
-				list.add(obj);
+			for (E element : elements) {
+				List<E> list = new ArrayList<E>();
+				list.add(element);
 				result.add(list);
 			}
 		} else {
-			for (Object o : elements) {
-				List clone = new ArrayList(elements);
-				clone.remove(o);
-				List<List> recursiveResult = permutation(clone, n - 1);
-				for (List recursiveElement : recursiveResult) {
-					recursiveElement.add(0, o);
+			for (E element : elements) {
+				List<E> clone = new ArrayList<E>(elements);
+				clone.remove(element);
+				List<List<E>> recursiveResult = permutation(clone, n - 1);
+				for (List<E> recursiveElement : recursiveResult) {
+					recursiveElement.add(0, element);
 					result.add(recursiveElement);
 				}
 			}
@@ -37,18 +36,16 @@ public class CollectionUtils {
 		return result;
 	}
 	
-	@SuppressWarnings("rawtypes")
-	public static List<List> permutation(List elements) {
+	public static <E> List<List<E>> permutation(List<E> elements) {
 		return permutation(elements, elements.size());
 	}
 	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public static List<Set> combination(List elements, int n) {
-		List<Set> result = new ArrayList<Set>();
+	public static <E> List<Set<E>> combination(List<E> elements, int n) {
+		List<Set<E>> result = new ArrayList<Set<E>>();
 		
-		List<List> permutationResult = permutation(elements, n);
-		for (List permutation : permutationResult) {
-			Set set = new TreeSet(permutation);
+		List<List<E>> permutationResult = permutation(elements, n);
+		for (List<E> permutation : permutationResult) {
+			Set<E> set = new TreeSet<E>(permutation);
 			if (!result.contains(set)) {
 				result.add(set);
 			}
