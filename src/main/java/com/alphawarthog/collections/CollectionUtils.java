@@ -7,6 +7,34 @@ import java.util.TreeSet;
 
 public class CollectionUtils {
 	
+	public static <E extends Comparable<E>> List<E> sort(List<E> elements) {
+		if (elements == null || elements.size() <= 1) {
+			return elements;
+		} else {
+			int pivot = elements.size() / 2;
+			E pivotElement = elements.get(pivot);
+			List<E> leftPartition = new ArrayList<E>();
+			List<E> rightPartition = new ArrayList<E>();
+			for (int i = 0; i < elements.size(); i++) {
+				if (i != pivot) {
+					E element = elements.get(i);
+					if (element.compareTo(pivotElement) >= 0) {
+						rightPartition.add(element);
+					} else {
+						leftPartition.add(element);
+					}
+				}
+			}
+			
+			List<E> sortedLeft = sort(leftPartition);
+			List<E> sortedRight = sort(rightPartition);
+			sortedLeft.add(pivotElement);
+			sortedLeft.addAll(sortedRight);
+			
+			return sortedLeft;
+		}
+	}
+	
 	/*
 	 * AB, AC, BA, BC, CA, CB
 	 * ABC, ABD, ACB, ACD, ADB, ADC, BAC, BAD, BCA, BCD, BDA, BDC, 
