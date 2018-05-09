@@ -8,6 +8,10 @@ import java.util.TreeSet;
 public class CollectionUtils {
 	
 	public static <E extends Comparable<E>> List<E> sort(List<E> elements) {
+		return sort(elements, false);
+	}
+	
+	public static <E extends Comparable<E>> List<E> sort(List<E> elements, boolean descending) {
 		if (elements == null || elements.size() <= 1) {
 			return elements;
 		} else {
@@ -18,16 +22,14 @@ public class CollectionUtils {
 			for (int i = 0; i < elements.size(); i++) {
 				if (i != pivot) {
 					E element = elements.get(i);
-					if (element.compareTo(pivotElement) >= 0) {
-						rightPartition.add(element);
-					} else {
-						leftPartition.add(element);
-					}
+					List<E> partition = element.compareTo(pivotElement) >= 0 ? descending ? leftPartition : rightPartition 
+							 																									   : descending ? rightPartition : leftPartition;
+ 					partition.add(element);
 				}
 			}
 			
-			List<E> sortedLeft = sort(leftPartition);
-			List<E> sortedRight = sort(rightPartition);
+			List<E> sortedLeft = sort(leftPartition, descending);
+			List<E> sortedRight = sort(rightPartition, descending);
 			sortedLeft.add(pivotElement);
 			sortedLeft.addAll(sortedRight);
 			
