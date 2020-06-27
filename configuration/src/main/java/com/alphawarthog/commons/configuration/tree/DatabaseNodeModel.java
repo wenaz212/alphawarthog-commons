@@ -26,8 +26,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.alphawarthog.sql.Transaction;
-import com.alphawarthog.sql.TransactionManager;
+import com.alphawarthog.dbutils.Transaction;
+import com.alphawarthog.dbutils.TransactionManager;
 
 public class DatabaseNodeModel implements NodeModel<DatabaseNode> {
 	

@@ -19,7 +19,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import com.alphawarthog.commons.configuration.tree.DatabaseNode;
 import com.alphawarthog.commons.configuration.tree.DatabaseNodeModel;
-import com.alphawarthog.sql.TransactionManager;
+import com.alphawarthog.dbutils.TransactionManager;
 
 public class DatabaseHierarchicalConfiguration extends AbstractHierarchicalConfiguration<DatabaseNode> {
 	

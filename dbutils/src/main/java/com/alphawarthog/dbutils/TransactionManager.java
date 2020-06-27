@@ -1,4 +1,4 @@
-package com.alphawarthog.sql;
+package com.alphawarthog.dbutils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

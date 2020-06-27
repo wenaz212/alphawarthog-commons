@@ -3,6 +3,7 @@ package com.alphawarthog.commons.configuration.client;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.LineNumberReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -31,7 +32,7 @@ import org.apache.logging.log4j.Logger;
 
 import com.alphawarthog.commons.configuration.DatabaseHierarchicalConfiguration;
 import com.alphawarthog.commons.configuration.tree.DatabaseNode;
-import com.alphawarthog.sql.TransactionManager;
+import com.alphawarthog.dbutils.TransactionManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class DatabaseHierarchicalConfigurationClient {
@@ -350,7 +351,7 @@ public class DatabaseHierarchicalConfigurationClient {
 	private String executeCommand(String command, String... params) {
 		switch (StringUtils.lowerCase(command)) {
 		case "load": return loadConfigurationFromFile(params);
-		case "addnode": 
+		case "addnode": return addNode(params);
 		case "addnodes": return addNodes(params);
 		case "addproperty": return addProperty(params);
 		case "clear": return clearAndReturnString();
@@ -374,19 +375,39 @@ public class DatabaseHierarchicalConfigurationClient {
 		}
 	}
 	
+	private String addNode(String[] params) {
+		checkParamsLength(params, 2, "Parent node key and new node name must be supplied");
+		String parentKey = params[0];
+		String nodeName = params[1];
+		String nodeValue = params.length % 2 == 0 ? null : params[2];
+		int attributeStartIndex = nodeValue == null ? 2 : 3;
+		Map<String, String> attributes = new HashMap<>();
+		while (attributeStartIndex < params.length) {
+			String attributeName = params[attributeStartIndex];
+			String attributeValue = params[++attributeStartIndex];
+			attributes.put(attributeName, attributeValue);
+			attributeStartIndex++;
+		}
+		DatabaseNode newNode = new DatabaseNode.Builder()
+				                               .key(nodeName)
+				                               .value(nodeValue)
+				                               .attributes(attributes)
+				                               .build();
+		return addNode(parentKey, newNode);
+	}
+
 	private String addNodes(String[] params) {
-		checkParamsLength(params, 1, "Parent node key must be supplied");
-		List<DatabaseNode> nodesToInsert = Arrays.stream(params, 1, params.length)
-												 .map(filePath -> {
-													 try {
-														 return mapper.readValue(new File(filePath), DatabaseNode.class);
-													 } catch (IOException e) {
-														 String msg = "Unable to read JSON string from " + filePath + ": " + e.getMessage();
-														 logger.error(msg, e);
-														 throw new ConfigurationRuntimeException(msg, e);
-													 }
-												 })
-												 .collect(Collectors.toList());
+		checkParamsLength(params, 2, "Parent node key and file containing new nodes to be added must be supplied");
+		List<DatabaseNode> nodesToInsert = new ArrayList<>();
+		try (LineNumberReader reader = new LineNumberReader(new FileReader(new File(params[1])))) {
+			String line = null;
+			while ((line = reader.readLine()) != null) {
+				nodesToInsert.add(mapper.readValue(line, DatabaseNode.class));
+			}
+		} catch (IOException e) {
+			throw new ConfigurationRuntimeException();
+		}
+			
 		List<String> insertedKeys = addNodes(params[0], nodesToInsert);
 		return insertedKeys.size() == 1 ? insertedKeys.get(0) : insertedKeys.toString();
 	}

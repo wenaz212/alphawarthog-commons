@@ -1,4 +1,4 @@
-package com.alphawarthog.sql;
+package com.alphawarthog.dbutils;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
